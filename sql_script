@@ -1,0 +1,125 @@
+CREATE TABLE sample_superstore (
+    Row_ID INT,
+    Order_ID VARCHAR(50),
+    Order_Date DATETIME,
+    OD1 DATE,
+    Order_date_Formatted DATE,
+    Ship_Date VARCHAR(20),
+    Ship_Date_Formatted DATE,
+    Ship_Mode VARCHAR(50),
+    Customer_ID VARCHAR(50),
+    Customer_Name VARCHAR(100),
+    Segment VARCHAR(50),
+    Country VARCHAR(50),
+    City VARCHAR(50),
+    State VARCHAR(50),
+    Postal_Code VARCHAR(20),
+    Region VARCHAR(50),
+    Product_ID VARCHAR(50),
+    Category VARCHAR(50),
+    Sub_Category VARCHAR(50),
+    Product_Name VARCHAR(255),
+    Sales DECIMAL(10,2),
+    Quantity INT,
+    Discount DECIMAL(5,2),
+    Profit DECIMAL(10,2),
+    PRIMARY KEY (Row_ID)
+);
+
+LOAD DATA LOCAL INFILE '/full/path/NEW-SAMPLE-SAMPLE.csv'
+INTO TABLE sample_superstore
+FIELDS TERMINATED BY ',' ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 LINES
+(Row_ID, Order_ID, Order_Date, OD1, Order_date_Formatted, Ship_Date, Ship_Date_Formatted, Ship_Mode, Customer_ID, Customer_Name, Segment, Country, City, State, Postal_Code, Region, Product_ID, Category, Sub_Category, Product_Name, Sales, Quantity, Discount, Profit);
+
+USE salesdap;
+
+SELECT * FROM sample_superstore LIMIT 10;
+
+-- Total Sales and Profit by Category
+SELECT
+    Category,
+    SUM(Sales) AS Total_Sales,
+    SUM(Profit) AS Total_Profit
+FROM sample_superstore
+GROUP BY Category
+ORDER BY Total_Sales DESC;
+
+-- Monthly Sales Trend (Total Sales per Month) using formatted order date
+SELECT
+    DATE_FORMAT(Order_date_Formatted, '%Y-%m') AS Month,
+    SUM(Sales) AS Total_Sales
+FROM sample_superstore
+GROUP BY Month
+ORDER BY Month;
+
+-- Top 10 Customers by Total Sales
+SELECT
+    Customer_Name,
+    SUM(Sales) AS Total_Sales,
+    SUM(Profit) AS Total_Profit
+FROM sample_superstore
+GROUP BY Customer_Name
+ORDER BY Total_Sales DESC
+LIMIT 10;
+
+-- Sales and Profit by Region and Segment
+SELECT
+    Region,
+    Segment,
+    SUM(Sales) AS Total_Sales,
+    SUM(Profit) AS Total_Profit
+FROM sample_superstore
+GROUP BY Region, Segment
+ORDER BY Region, Segment;
+
+-- Average Delivery Time Days - between formatted Order and Ship Dates
+SELECT
+    AVG(DATEDIFF(
+        Ship_Date_Formatted,
+        Order_date_Formatted
+    )) AS Avg_Delivery_Days
+FROM sample_superstore;
+
+-- Products with Negative Profit (Loss-Making Products)
+SELECT
+    Product_Name,
+    Category,
+    Sub_Category,
+    SUM(Sales) AS Total_Sales,
+    SUM(Profit) AS Total_Profit
+FROM sample_superstore
+GROUP BY Product_Name, Category, Sub_Category
+HAVING SUM(Profit) < 0
+ORDER BY Total_Profit ASC;
+
+-- Sales by Ship Mode
+SELECT
+    Ship_Mode,
+    SUM(Sales) AS Total_Sales,
+    SUM(Profit) AS Total_Profit
+FROM sample_superstore
+GROUP BY Ship_Mode
+ORDER BY Total_Sales DESC;
+
+-- Percentage Contribution of Each Category to Total Sales
+WITH total_sales AS (
+    SELECT SUM(Sales) AS grand_total FROM sample_superstore
+)
+SELECT
+    Category,
+    SUM(Sales) AS Category_Sales,
+    ROUND((SUM(Sales) / (SELECT grand_total FROM total_sales)) * 100, 2) AS Sales_Percentage
+FROM sample_superstore
+GROUP BY Category
+ORDER BY Category_Sales DESC;
+
+-- Region-wise Quarterly Sales using formatted order date
+SELECT
+    Region,
+    CONCAT(YEAR(Order_date_Formatted), '-Q', QUARTER(Order_date_Formatted)) AS Quarter,
+    SUM(Sales) AS Total_Sales
+FROM sample_superstore
+GROUP BY Region, Quarter
+ORDER BY Region, Quarter;
